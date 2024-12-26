@@ -11,11 +11,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 {
     public DbSet<Post> Posts => Set<Post>();
     public DbSet<Media> Medias => Set<Media>();
-    
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         configurationBuilder
             .Properties<Ulid>()
             .HaveConversion<UlidToStringConverter>();
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplyConfigurationsFromAssembly(GetType().Assembly);
     }
 }

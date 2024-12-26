@@ -25,8 +25,8 @@ public class TestApplication : FastEndpoints.Testing.AppFixture<Program>
 
         _minioContainer = new MinioBuilder()
             .WithImage("minio/minio:latest")
-            .WithUsername("minio")
-            .WithPassword("minio")
+            .WithUsername("minioadmin")
+            .WithPassword("minioadmin")
             .Build();
         
         await _postgresContainer.StartAsync();
@@ -34,9 +34,12 @@ public class TestApplication : FastEndpoints.Testing.AppFixture<Program>
 
         var serviceCollection = new ServiceCollection();
         
-        var configurationBuilder = new ConfigurationBuilder();
-        AddTestConfiguration(configurationBuilder);
-        var configuration = configurationBuilder.Build();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "ConnectionStrings:Database", _postgresContainer.GetConnectionString() },
+            })
+            .Build();
         
         serviceCollection.AddApplicationDbContext(configuration);
         await using var serviceProvider = serviceCollection.BuildServiceProvider();
@@ -44,21 +47,20 @@ public class TestApplication : FastEndpoints.Testing.AppFixture<Program>
         await dbContext.Database.MigrateAsync();
     }
 
-    protected override void ConfigureApp(IWebHostBuilder b)
+    protected override void ConfigureApp(IWebHostBuilder builder)
     {
-        b.ConfigureAppConfiguration(c => AddTestConfiguration(c));
-    }
-
-    private IConfigurationBuilder AddTestConfiguration(IConfigurationBuilder builder)
-    {
-        return builder.AddInMemoryCollection(new Dictionary<string, string?>
+        builder.ConfigureAppConfiguration(c =>
         {
-            { "ConnectionStrings:Database", _postgresContainer.GetConnectionString() },
-            { "AWS:Region", "us-west-2" },
-            { "AWS:Bucket", "modshots-test" },
-            { "AWS:Endpoint", _minioContainer.GetConnectionString() },
-            { "AWS:AccessKey", "minio" },
-            { "AWS:ForcePathStyle", "true" },
+            c.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "ConnectionStrings:Database", _postgresContainer.GetConnectionString() },
+                { "AWS:Region", "us-west-2" },
+                { "AWS:Bucket", "modshots-test" },
+                { "AWS:Endpoint", _minioContainer.GetConnectionString() },
+                { "AWS:AccessKey", _minioContainer.GetAccessKey() },
+                { "AWS:SecretKey", _minioContainer.GetSecretKey() },
+                { "AWS:ForcePathStyle", "true" },
+            });
         });
     }
 }

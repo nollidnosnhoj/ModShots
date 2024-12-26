@@ -13,6 +13,7 @@ public static class ServiceRegistrations
     public static IServiceCollection AddApplicationDbContext(this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(IApplicationMarker).Assembly));
         services.AddTransient<DispatchDomainEventsInterceptor>();
         services.AddDbContext<ApplicationDbContext>((sp, options) =>
         {

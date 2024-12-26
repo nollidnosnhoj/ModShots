@@ -2,11 +2,18 @@ using FastEndpoints;
 using FastEndpoints.Swagger;
 using ModShots.Application;
 using ModShots.Application.Common.HashIds;
+using ModShots.Application.Data.Interceptors;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
+    .AddMediatR(config =>
+    {
+        config.RegisterServicesFromAssemblies(typeof(IApplicationMarker).Assembly);
+    })
+    .AddSingleton<TimeProvider>(_ => TimeProvider.System)
     .AddApplicationDbContext(builder.Configuration)
+    .AddStorage(builder.Configuration)
     .AddFastEndpoints()
     .AddSwaggerDocument(opts =>
     {
