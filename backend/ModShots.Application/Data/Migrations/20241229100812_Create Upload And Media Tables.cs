@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ModShots.Application.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class Initial : Migration
+    public partial class CreateUploadAndMediaTables : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -18,6 +18,7 @@ namespace ModShots.Application.Data.Migrations
                 {
                     id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    public_id = table.Column<string>(type: "character varying(12)", maxLength: 12, nullable: false),
                     title = table.Column<string>(type: "text", nullable: false),
                     description = table.Column<string>(type: "text", nullable: true),
                     severity = table.Column<int>(type: "integer", nullable: false),
@@ -62,6 +63,12 @@ namespace ModShots.Application.Data.Migrations
                 name: "ix_medias_post_id",
                 table: "medias",
                 column: "post_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_posts_public_id",
+                table: "posts",
+                column: "public_id",
+                unique: true);
         }
 
         /// <inheritdoc />

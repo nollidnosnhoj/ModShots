@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using ModShots.Application.Common.HashIds;
 using ModShots.Application.Data;
 using ModShots.Application.Features.Posts.Mappers;
 using ModShots.Application.Features.Posts.Models;
+using ModShots.Domain.Common;
 
 namespace ModShots.Application.Features.Posts;
 
@@ -10,7 +10,7 @@ public static class GetPost
 {
     public class Request
     {
-        public required HashId PostId { get; init; }
+        public required PublicId PostId { get; init; }
     }
     
     public class Endpoint(ApplicationDbContext dbContext) : FastEndpoints.Endpoint<Request, PostDto>
@@ -24,7 +24,7 @@ public static class GetPost
         public override async Task HandleAsync(Request req, CancellationToken ct)
         {
             var post = await dbContext.Posts
-                .Where(p => p.Id == (int) req.PostId)
+                .Where(p => p.PublicId == req.PostId)
                 .ProjectToDto()
                 .SingleOrDefaultAsync(ct);
 

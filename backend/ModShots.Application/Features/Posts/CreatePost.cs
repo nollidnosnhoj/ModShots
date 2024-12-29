@@ -1,83 +1,66 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using ModShots.Application.Data;
+using ModShots.Application.Features.Posts.Mappers;
+using ModShots.Application.Features.Posts.Models;
 using ModShots.Application.Features.Uploads.Models;
 using ModShots.Application.Storage;
 using ModShots.Application.Storage.AWSS3;
 using ModShots.Domain;
+using NanoidDotNet;
 
 namespace ModShots.Application.Features.Posts;
 
 public static class CreatePost
 {
-    public class Request
-    {
-        public required List<Media> Medias { get; init; }
-
-        public class Media
-        {
-            public required string FileName { get; init; }
-            public required string MimeType { get; init; }
-            public required long FileSize { get; init; }
-        }
-    }
-
-    public class Response
-    {
-        public required int Id { get; init; }
-        public required string Title { get; init; }
-        public required string? Description { get; init; }
-        public required Severity Severity { get; init; }
-        public required PostStatus Status { get; init; }
-        public required DateTimeOffset CreatedAt { get; init; }
-        
-        public required List<UploadMediaRequest> Medias { get; init; }
-    }
-
-    public class Endpoint(ApplicationDbContext dbContext, IS3Storage blobStorage, TimeProvider timeProvider) 
-        : FastEndpoints.Endpoint<Request, Response>
+    public class Endpoint(
+        ApplicationDbContext dbContext, 
+        TimeProvider timeProvider,
+        ILogger<Endpoint> logger)
+        : FastEndpoints.EndpointWithoutRequest<PostDto>
     {
         public override void Configure()
         {
             Post("/posts/");
         }
 
-        public override async Task HandleAsync(Request req, CancellationToken ct)
+        public override async Task HandleAsync(CancellationToken ct)
         {
             await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
 
             try
             {
-                var medias = req.Medias
-                    .Select(x => Media.Create(x.FileName, x.MimeType, x.FileSize, timeProvider.GetUtcNow()))
-                    .ToList();
-
-                var post = Domain.Post.Create(medias, timeProvider.GetUtcNow());
+                var postPublicId = await GeneratePublicId(ct);
+                var post = Domain.Post.Create(postPublicId, timeProvider.GetUtcNow());
                 await dbContext.Posts.AddAsync(post, ct);
                 await dbContext.SaveChangesAsync(ct);
-
-                List<UploadMediaRequest> uploadRequests = [];
-                foreach (var media in medias)
-                {
-                    var uploadResponse = await AddMediaToPost.CreateUploadResponse(media, blobStorage, ct);
-                    uploadRequests.Add(uploadResponse);
-                }
-                
                 await transaction.CommitAsync(ct);
 
-                await SendOkAsync(new Response
-                {
-                    Id = post.Id,
-                    Title = post.Title,
-                    Description = post.Description,
-                    Severity = post.Severity,
-                    Status = post.Status,
-                    CreatedAt = post.CreatedAt,
-                    Medias = uploadRequests
-                }, ct);
+                await SendOkAsync(PostMapper.MapToDto(post), ct);
             }
             catch (Exception)
             {
                 await transaction.RollbackAsync(ct);
                 throw;
+            }
+        }
+
+        private async Task<string> GeneratePublicId(CancellationToken ct = default)
+        {
+            var iteration = 0;
+            while (true)
+            {
+                if (iteration == 2)
+                {
+                    logger.LogWarning("Encountered 2 collisions when generating public id");
+                }
+                
+                var publicId = await Nanoid.GenerateAsync(size: 12);
+                var exists = await dbContext.Posts.AnyAsync(x => x.PublicId == publicId, ct);
+                
+                if (!exists) return publicId;
+                
+                iteration++;
             }
         }
     }

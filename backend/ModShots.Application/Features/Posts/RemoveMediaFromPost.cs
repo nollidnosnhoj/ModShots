@@ -1,31 +1,34 @@
 using Microsoft.EntityFrameworkCore;
-using ModShots.Application.Common.HashIds;
 using ModShots.Application.Data;
 using ModShots.Domain;
+using ModShots.Domain.Common;
 
 namespace ModShots.Application.Features.Posts;
 
 public static class RemoveMediaFromPost
 {
-    public class Endpoint(ApplicationDbContext dbContext) : FastEndpoints.EndpointWithoutRequest
+    public class Request
+    {
+        public required PublicId PostId { get; init; }
+        public required Ulid MediaId { get; init; }
+    }
+    
+    public class Endpoint(ApplicationDbContext dbContext) : FastEndpoints.Endpoint<Request>
     {
         public override void Configure()
         {
             Delete("/posts/{PostId}/medias/{MediaId}/");
         }
 
-        public override async Task HandleAsync(CancellationToken ct)
+        public override async Task HandleAsync(Request req, CancellationToken ct)
         {
-            var postId = Route<HashId>("PostId", isRequired: true);
-            var mediaId = Route<Ulid>("MediaId", isRequired: true);
-            
             await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
 
             try
             {
                 var post = await dbContext.Posts
                     .Include(x => x.Medias)
-                    .Where(x => x.Id == postId)
+                    .Where(x => x.PublicId == req.PostId)
                     .SingleOrDefaultAsync(ct);
                 
                 if (post is null)
@@ -40,7 +43,7 @@ public static class RemoveMediaFromPost
                     return;
                 }
                 
-                var media = post.Medias.SingleOrDefault(x => x.Id == mediaId);
+                var media = post.Medias.SingleOrDefault(x => x.Id == req.MediaId);
                 
                 if (media is null)
                 {

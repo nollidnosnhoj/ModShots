@@ -1,10 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using ModShots.Application.Common.HashIds;
 using ModShots.Application.Data;
 using ModShots.Application.Features.Uploads.Models;
-using ModShots.Application.Storage;
 using ModShots.Application.Storage.AWSS3;
 using ModShots.Domain;
+using ModShots.Domain.Common;
 
 namespace ModShots.Application.Features.Posts;
 
@@ -12,6 +11,7 @@ public static class AddMediaToPost
 {
     public class Request
     {
+        public required PublicId PostId { get; init; }
         public required string FileName { get; init; }
         public required string MimeType { get; init; }
         public required long FileSize { get; init; }
@@ -27,15 +27,13 @@ public static class AddMediaToPost
 
         public override async Task HandleAsync(Request req, CancellationToken ct)
         {
-            var postId = Route<HashId>("PostId", isRequired: true);
-            
             await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
 
             try
             {
                 var post = await dbContext.Posts
                     .Include(x => x.Medias)
-                    .Where(x => x.Id == postId)
+                    .Where(x => x.PublicId == req.PostId)
                     .FirstOrDefaultAsync(ct);
                 
                 if (post is null)

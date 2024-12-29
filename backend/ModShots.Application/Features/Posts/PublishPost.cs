@@ -1,28 +1,31 @@
 using Microsoft.EntityFrameworkCore;
-using ModShots.Application.Common.HashIds;
 using ModShots.Application.Data;
 using ModShots.Application.Features.Posts.Mappers;
 using ModShots.Application.Features.Posts.Models;
 using ModShots.Domain;
+using ModShots.Domain.Common;
 
 namespace ModShots.Application.Features.Posts;
 
 public static class PublishPost
 {
-    public class Endpoint(ApplicationDbContext dbContext, TimeProvider timeProvider) : FastEndpoints.EndpointWithoutRequest<PostDto>
+    public class Request
+    {
+        public required PublicId PostId { get; init; }
+    }
+    
+    public class Endpoint(ApplicationDbContext dbContext, TimeProvider timeProvider) : FastEndpoints.Endpoint<Request, PostDto>
     {
         public override void Configure()
         {
             Patch("/posts/{PostId}/publish/");
         }
 
-        public override async Task HandleAsync(CancellationToken ct)
+        public override async Task HandleAsync(Request req, CancellationToken ct)
         {
-            var postId = Route<HashId>("PostId", isRequired: true);
-            
             var post = await dbContext.Posts
                 .Include(x => x.Medias)
-                .Where(x => x.Id == postId)
+                .Where(x => x.PublicId == req.PostId)
                 .SingleOrDefaultAsync(ct);
             
             if (post is null)

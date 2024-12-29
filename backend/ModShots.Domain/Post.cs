@@ -1,4 +1,5 @@
 using ModShots.Domain.Common;
+using NanoidDotNet;
 
 namespace ModShots.Domain;
 
@@ -8,8 +9,9 @@ public enum PostStatus
     Published
 }
 
-public class Post : BaseEntity<int>
+public class Post : BaseEntity<int>, IHasPublicIdentifier
 {
+    public PublicId PublicId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public Severity Severity { get; set; }
@@ -45,15 +47,21 @@ public class Post : BaseEntity<int>
         PublishedAt = publishedAt;
     }
 
-    public static Post Create(List<Media> medias, DateTimeOffset createdAt)
+    public static Post Create(PublicId publicId, DateTimeOffset createdAt)
     {
         return new Post
         {
-            Title = medias[0].OriginalFileName,
+            PublicId = publicId,
+            Title = $"post_{publicId}",
             Description = null,
-            Medias = medias,
             CreatedAt = createdAt,
             Status = PostStatus.Draft
         };
+    }
+
+    public static Post Create(DateTimeOffset createdAt)
+    {
+        var publicId = PublicId.New();
+        return Create(publicId, createdAt);
     }
 }

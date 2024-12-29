@@ -11,7 +11,7 @@ public static class PostMapper
     {
         return new PostDto
         {
-            Id = post.Id,
+            Id = post.PublicId,
             Title = post.Title,
             Description = post.Description,
             Severity = post.Severity,
@@ -26,7 +26,7 @@ public static class PostMapper
     {
         return posts.Select(post => new PostDto
         {
-            Id = post.Id,
+            Id = post.PublicId,
             Title = post.Title,
             Description = post.Description,
             Severity = post.Severity,

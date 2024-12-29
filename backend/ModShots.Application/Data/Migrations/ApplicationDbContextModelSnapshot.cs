@@ -110,6 +110,12 @@ namespace ModShots.Application.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
+                    b.Property<string>("PublicId")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("public_id");
+
                     b.Property<DateTimeOffset?>("PublishedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("published_at");
@@ -129,6 +135,10 @@ namespace ModShots.Application.Data.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_posts");
+
+                    b.HasIndex("PublicId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_posts_public_id");
 
                     b.ToTable("posts", (string)null);
                 });

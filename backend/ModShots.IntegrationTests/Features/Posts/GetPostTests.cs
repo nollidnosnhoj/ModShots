@@ -1,16 +1,15 @@
 using System.Net;
+using Argon;
 using FastEndpoints;
 using FastEndpoints.Testing;
 using FluentAssertions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using ModShots.Application.Common.HashIds;
 using ModShots.Application.Data;
 using ModShots.Application.Features.Posts;
 using ModShots.Application.Features.Posts.Models;
 using ModShots.Application.Features.Uploads.Models;
 using ModShots.Domain;
-using ModShots.IntegrationTests.Converters;
+using ModShots.Domain.Common;
 
 namespace ModShots.IntegrationTests.Features.Posts;
 
@@ -21,13 +20,18 @@ public class GetPostTests : TestBase<TestApplication>
     public GetPostTests(TestApplication app)
     {
         _app = app;
-        VerifierSettings.AddExtraSettings(s => s.Converters.Add(new HashIdConverter()));
+        VerifierSettings.ScrubMembers(typeof(PostDto), nameof(PostDto.Id));
+        VerifierSettings.ScrubMembers(typeof(UploadDto), nameof(UploadDto.Id));
+        VerifierSettings.AddExtraSettings(s =>
+        {
+            s.DefaultValueHandling = DefaultValueHandling.Populate;
+        });
     }
     
     [Fact]
     public async Task SuccessfullyGetPost()
     {
-        HashId postId;
+        Post post;
         using (var scope = _app.Server.Services.CreateScope())
         {
             var timeProvider = scope.ServiceProvider.GetRequiredService<TimeProvider>();
@@ -39,21 +43,19 @@ public class GetPostTests : TestBase<TestApplication>
                     100_000_000, 
                     timeProvider.GetUtcNow()))
                 .ToList();
-            var post = Post.Create(medias, timeProvider.GetUtcNow());
+            post = Post.Create(timeProvider.GetUtcNow());
             await dbContext.Posts.AddAsync(post);
             await dbContext.SaveChangesAsync();
-            postId = post.Id;
         }
 
         var (response, returnedPost) = await _app.Client
             .GETAsync<GetPost.Endpoint, GetPost.Request, PostDto>(
                 new GetPost.Request
                 {
-                    PostId = postId
+                    PostId = post.PublicId
                 });
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        await Verify(returnedPost)
-            .ScrubMembers(typeof(PostDto), nameof(PostDto.Id))
-            .ScrubMembers(typeof(UploadDto), nameof(UploadDto.Id));
+        returnedPost.Id.Should().Be(post.PublicId);
+        returnedPost.Title.Should().Be(post.Title);
     }
 }
