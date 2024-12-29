@@ -1,34 +1,36 @@
+using FastEndpoints.Testing;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using ModShots.API;
 using ModShots.Application;
 using ModShots.Application.Data;
+using ModShots.Application.Storage.AWSS3;
 using Testcontainers.Minio;
 using Testcontainers.PostgreSql;
 
 namespace ModShots.IntegrationTests;
 
-public class TestApplication : FastEndpoints.Testing.AppFixture<Program>
+public class TestApplication : AppFixture<IApiMarker>
 {
-    private PostgreSqlContainer _postgresContainer = null!;
-    private MinioContainer _minioContainer = null!;
+    private readonly PostgreSqlContainer _postgresContainer = new PostgreSqlBuilder()
+        .WithImage("postgres:latest")
+        .WithDatabase("ModShots")
+        .WithUsername("postgres")
+        .WithPassword("postgres")
+        .Build()!;
+
+    private readonly MinioContainer _minioContainer = new MinioBuilder()
+        .WithImage("minio/minio:latest")
+        .WithUsername("minioadmin")
+        .WithPassword("minioadmin")
+        .Build();
 
     protected override async Task PreSetupAsync()
     {
-        _postgresContainer = new PostgreSqlBuilder()
-            .WithImage("postgres:latest")
-            .WithDatabase("ModShots")
-            .WithUsername("postgres")
-            .WithPassword("postgres")
-            .Build();
-
-        _minioContainer = new MinioBuilder()
-            .WithImage("minio/minio:latest")
-            .WithUsername("minioadmin")
-            .WithPassword("minioadmin")
-            .Build();
-        
         await _postgresContainer.StartAsync();
         await _minioContainer.StartAsync();
 
@@ -49,7 +51,7 @@ public class TestApplication : FastEndpoints.Testing.AppFixture<Program>
 
     protected override void ConfigureApp(IWebHostBuilder builder)
     {
-        builder.ConfigureAppConfiguration(c =>
+        builder.ConfigureAppConfiguration((_, c) =>
         {
             c.AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -62,5 +64,7 @@ public class TestApplication : FastEndpoints.Testing.AppFixture<Program>
                 { "AWS:ForcePathStyle", "true" },
             });
         });
+        
+        base.ConfigureApp(builder);
     }
 }

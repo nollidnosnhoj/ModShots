@@ -13,7 +13,6 @@ public class S3StorageProvider : IStorage, IS3Storage
     {
         var config = new S3StorageProviderConfiguration();
         configure(config);
-        config.ThrowIfInvalid();
         _bucketName = config.Bucket;
         Client = new AmazonS3Client(config.AccessKey, config.SecretKey, config.GetAmazonS3Config());
     }

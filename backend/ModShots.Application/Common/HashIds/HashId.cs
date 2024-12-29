@@ -1,4 +1,4 @@
-#nullable disable
+
 using HashidsNet;
 
 namespace ModShots.Application.Common.HashIds;
@@ -6,7 +6,7 @@ namespace ModShots.Application.Common.HashIds;
 [Serializable]
 public readonly record struct HashId
 {
-    private static readonly Hashids _hid = new("salt");
+    private static readonly Hashids _hid = new(salt: "salt", minHashLength: 12);
 
     private readonly int _int;
     private readonly string _hash;
@@ -30,9 +30,9 @@ public readonly record struct HashId
     
     public override string ToString() => _hash;
 
-    public static bool TryParse(string input, out HashId? output)
+    public static bool TryParse(string input, out HashId output)
     {
-        output = null;
+        output = default;
         if (string.IsNullOrWhiteSpace(input)) return false;
         
         output = new HashId(input);

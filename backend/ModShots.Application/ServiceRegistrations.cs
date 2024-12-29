@@ -10,8 +10,7 @@ namespace ModShots.Application;
 
 public static class ServiceRegistrations
 {
-    public static IServiceCollection AddApplicationDbContext(this IServiceCollection services,
-        IConfiguration configuration)
+    public static IServiceCollection AddApplicationDbContext(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(IApplicationMarker).Assembly));
         services.AddTransient<DispatchDomainEventsInterceptor>();
@@ -21,31 +20,37 @@ public static class ServiceRegistrations
             options.AddInterceptors(sp.GetRequiredService<DispatchDomainEventsInterceptor>());
             options.UseSnakeCaseNamingConvention();
         });
-
+        
         return services;
     }
 
-    public static IServiceCollection AddStorage(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddStorage(this IServiceCollection services)
     {
-        var awsConfiguration = configuration.GetSection("AWS");
-        var awsRegion = awsConfiguration.GetValue<string>("Region", "");
-        var awsBucket = awsConfiguration.GetValue<string>("Bucket", "");
-        var awsAccessKey = awsConfiguration.GetValue<string>("AccessKey", "");
-        var awsSecretKey = awsConfiguration.GetValue<string>("SecretKey", "");
-        var awsEndpoint = awsConfiguration.GetValue<string>("Endpoint", "");
-        
-        services.AddSingleton<S3StorageProvider>(_ => new S3StorageProvider(config =>
+        services.AddSingleton<S3StorageProvider>(sp =>
         {
-            config.Endpoint = awsEndpoint;
-            config.AccessKey = awsAccessKey;
-            config.SecretKey = awsSecretKey;
-            config.Region = awsRegion;
-            config.Bucket = awsBucket;
-            config.ForcePathStyle = true;
-        }));
+            var configuration = sp.GetRequiredService<IConfiguration>();
+            var awsConfiguration = configuration.GetSection("AWS");
+            var awsRegion = awsConfiguration.GetValue<string>("Region", "");
+            var awsBucket = awsConfiguration.GetValue<string>("Bucket", "");
+            var awsAccessKey = awsConfiguration.GetValue<string>("AccessKey", "");
+            var awsSecretKey = awsConfiguration.GetValue<string>("SecretKey", "");
+            var awsEndpoint = awsConfiguration.GetValue<string>("Endpoint", "");
+            var awsForcePathStyle = awsConfiguration.GetValue("ForcePathStyle", false);
+
+            return new S3StorageProvider(config =>
+            {
+                config.Endpoint = awsEndpoint;
+                config.AccessKey = awsAccessKey;
+                config.SecretKey = awsSecretKey;
+                config.Region = awsRegion;
+                config.Bucket = awsBucket;
+                config.ForcePathStyle = awsForcePathStyle;
+            });
+        });
+        
         services.AddSingleton<IS3Storage>(sp => sp.GetRequiredService<S3StorageProvider>());
         services.AddSingleton<IStorage>(sp => sp.GetRequiredService<S3StorageProvider>());
-
+        
         return services;
     }
 }

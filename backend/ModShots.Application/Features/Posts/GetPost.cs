@@ -8,7 +8,12 @@ namespace ModShots.Application.Features.Posts;
 
 public static class GetPost
 {
-    public class Endpoint(ApplicationDbContext dbContext) : FastEndpoints.EndpointWithoutRequest<PostDto>
+    public class Request
+    {
+        public required HashId PostId { get; init; }
+    }
+    
+    public class Endpoint(ApplicationDbContext dbContext) : FastEndpoints.Endpoint<Request, PostDto>
     {
         public override void Configure()
         {
@@ -16,12 +21,10 @@ public static class GetPost
             AllowAnonymous();
         }
 
-        public override async Task HandleAsync(CancellationToken ct)
+        public override async Task HandleAsync(Request req, CancellationToken ct)
         {
-            var postId = Route<HashId>("PostId", isRequired: true);
-
             var post = await dbContext.Posts
-                .Where(p => p.Id == postId)
+                .Where(p => p.Id == (int) req.PostId)
                 .ProjectToDto()
                 .SingleOrDefaultAsync(ct);
 

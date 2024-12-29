@@ -1,0 +1,17 @@
+﻿{
+  Id: {Scrubbed},
+  Title: test.jpg,
+  CreatedAt: DateTimeOffset_1,
+  Medias: [
+    {
+      Id: {Scrubbed},
+      MimeType: image/jpeg,
+      FileSize: 100000000
+    },
+    {
+      Id: {Scrubbed},
+      MimeType: image/jpeg,
+      FileSize: 100000000
+    }
+  ]
+}
